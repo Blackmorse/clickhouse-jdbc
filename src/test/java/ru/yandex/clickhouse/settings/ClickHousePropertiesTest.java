@@ -35,11 +35,19 @@ public class ClickHousePropertiesTest {
         int expectedConnectionTimeout = 1000;
         boolean isCompress = false;
         Integer maxParallelReplicas = 3;
+        Integer maxPartitionsPerInsertBlock = 200;
+        Long maxInsertBlockSize = 142L;
+        Boolean insertDeduplicate = true;
+        Boolean insertDistributedSync = true;
 
         ClickHouseProperties properties = new ClickHouseProperties();
         properties.setConnectionTimeout( expectedConnectionTimeout );
         properties.setMaxParallelReplicas( maxParallelReplicas );
+        properties.setMaxPartitionsPerInsertBlock( maxPartitionsPerInsertBlock );
         properties.setCompress( isCompress );
+        properties.setMaxInsertBlockSize(maxInsertBlockSize);
+        properties.setInsertDeduplicate(insertDeduplicate);
+        properties.setInsertDistributedSync(insertDistributedSync);
 
         ClickHouseDataSource clickHouseDataSource = new ClickHouseDataSource(
                 "jdbc:clickhouse://localhost:8123/test",
@@ -58,8 +66,24 @@ public class ClickHousePropertiesTest {
                 maxParallelReplicas
         );
         Assert.assertEquals(
+                clickHouseDataSource.getProperties().getMaxPartitionsPerInsertBlock(),
+                maxPartitionsPerInsertBlock
+        );
+        Assert.assertEquals(
                 clickHouseDataSource.getProperties().getTotalsMode(),
                 ClickHouseQueryParam.TOTALS_MODE.getDefaultValue()
+        );
+        Assert.assertEquals(
+            clickHouseDataSource.getProperties().getMaxInsertBlockSize(),
+            maxInsertBlockSize
+        );
+        Assert.assertEquals(
+            clickHouseDataSource.getProperties().getInsertDeduplicate(),
+            insertDeduplicate
+        );
+        Assert.assertEquals(
+            clickHouseDataSource.getProperties().getInsertDistributedSync(),
+            insertDistributedSync
         );
     }
 
@@ -110,10 +134,50 @@ public class ClickHousePropertiesTest {
         clickHouseProperties.setInsertQuorumTimeout(1000L);
         clickHouseProperties.setInsertQuorum(3L);
         clickHouseProperties.setSelectSequentialConsistency(1L);
+        clickHouseProperties.setMaxInsertBlockSize(42L);
+        clickHouseProperties.setInsertDeduplicate(true);
+        clickHouseProperties.setInsertDistributedSync(true);
 
         Map<ClickHouseQueryParam, String> clickHouseQueryParams = clickHouseProperties.buildQueryParams(true);
         Assert.assertEquals(clickHouseQueryParams.get(ClickHouseQueryParam.INSERT_QUORUM), "3");
         Assert.assertEquals(clickHouseQueryParams.get(ClickHouseQueryParam.INSERT_QUORUM_TIMEOUT), "1000");
         Assert.assertEquals(clickHouseQueryParams.get(ClickHouseQueryParam.SELECT_SEQUENTIAL_CONSISTENCY), "1");
+        Assert.assertEquals(clickHouseQueryParams.get(ClickHouseQueryParam.MAX_INSERT_BLOCK_SIZE), "42");
+        Assert.assertEquals(clickHouseQueryParams.get(ClickHouseQueryParam.INSERT_DEDUPLICATE), "1");
+        Assert.assertEquals(clickHouseQueryParams.get(ClickHouseQueryParam.INSERT_DISTRIBUTED_SYNC), "1");
+    }
+
+    @Test
+    public void mergeClickHousePropertiesTest() {
+        ClickHouseProperties clickHouseProperties1 = new ClickHouseProperties();
+        ClickHouseProperties clickHouseProperties2 = new ClickHouseProperties();
+        clickHouseProperties1.setDatabase("click");
+        clickHouseProperties1.setConnectionTimeout(13000);
+        clickHouseProperties2.setSocketTimeout(15000);
+        clickHouseProperties2.setUser("readonly");
+        final ClickHouseProperties merged = clickHouseProperties1.merge(clickHouseProperties2);
+        // merge equals: clickHouseProperties1 overwrite with clickHouseProperties2's value or default not null value
+        Assert.assertEquals(merged.getDatabase(),"click"); // using properties1, because properties1 not setting and
+        // default value is null
+        Assert.assertEquals(merged.getConnectionTimeout(),ClickHouseConnectionSettings.CONNECTION_TIMEOUT.getDefaultValue());// overwrite with properties2's default value
+        Assert.assertEquals(merged.getSocketTimeout(),15000);// using properties2
+        Assert.assertEquals(merged.getUser(),"readonly"); // using properties2
+    }
+
+    @Test
+    public void mergePropertiesTest() {
+        ClickHouseProperties clickHouseProperties1 = new ClickHouseProperties();
+        Properties properties2 = new Properties();
+        clickHouseProperties1.setDatabase("click");
+        clickHouseProperties1.setMaxThreads(8);
+        clickHouseProperties1.setConnectionTimeout(13000);
+        properties2.put(ClickHouseConnectionSettings.SOCKET_TIMEOUT.getKey(), "15000");
+        properties2.put(ClickHouseQueryParam.DATABASE.getKey(), "house");
+        final ClickHouseProperties merged = clickHouseProperties1.merge(properties2);
+        // merge equals: clickHouseProperties1 overwrite with properties in properties2 not including default value
+        Assert.assertEquals( merged.getDatabase(),"house");// overwrite with properties2
+        Assert.assertEquals(merged.getMaxThreads().intValue(),8);// using properties1
+        Assert.assertEquals(merged.getConnectionTimeout(),13000);// using properties1
+        Assert.assertEquals(merged.getSocketTimeout(),15000);// using properties2
     }
 }

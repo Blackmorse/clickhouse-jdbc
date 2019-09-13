@@ -65,6 +65,10 @@ public enum ClickHouseQueryParam implements DriverPropertyCreator {
     INPUT_FORMAT_VALUES_INTERPRET_EXPRESSIONS("input_format_values_interpret_expressions", true, Boolean.class,
             "For Values format: if field could not be parsed by streaming parser, run SQL parser and try to interpret it as SQL expression."),
 
+    INSERT_DEDUPLICATE("insert_deduplicate", null, Boolean.class, "For INSERT queries in the replicated table, specifies that deduplication of insertings blocks should be preformed"),
+
+    INSERT_DISTRIBUTED_SYNC("insert_distributed_sync", null, Boolean.class, "If setting is enabled, insert query into distributed waits until data will be sent to all nodes in cluster."),
+
     INSERT_QUORUM("insert_quorum", null, Long.class, ""),
 
     INSERT_QUORUM_TIMEOUT("insert_quorum_timeout", null, Long.class, ""),
@@ -119,6 +123,8 @@ public enum ClickHouseQueryParam implements DriverPropertyCreator {
     //dbms/include/DB/Interpreters/Settings.h
     MAX_PARALLEL_REPLICAS("max_parallel_replicas", null, Integer.class, "Max shard replica count."),
 
+    MAX_PARTITIONS_PER_INSERT_BLOCK("max_partitions_per_insert_block", null, Integer.class, "If inserted block contains larger number of partitions, an exception is thrown. Set it to 0 if you want to remove the limit (not recommended)."),
+
     MAX_READ_BUFFER_SIZE("max_read_buffer_size", null, Long.class, ""),
 
     MAX_RESULT_ROWS("max_result_rows", null, Integer.class, "Limit on the number of rows in the result. Also checked for subqueries, and on remote servers when running parts of a distributed query."),
@@ -135,6 +141,8 @@ public enum ClickHouseQueryParam implements DriverPropertyCreator {
     MAX_THREADS("max_threads", null, Integer.class, "The maximum number of query processing threads"),
 
     MAX_QUERY_SIZE("max_query_size", null, Long.class, "Maximum size of query"),
+
+    MAX_AST_ELEMENTS("max_ast_elements", null, Long.class, "Maximum number of elements in a query syntactic tree"),
 
     MEMORY_TRACKER_FAULT_PROBABILITY("memory_tracker_fault_probability", null, Double.class, ""),
 

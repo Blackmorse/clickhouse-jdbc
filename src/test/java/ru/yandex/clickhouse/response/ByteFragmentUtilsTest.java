@@ -9,8 +9,10 @@ import com.google.common.primitives.Longs;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import ru.yandex.clickhouse.ClickHouseArray;
+import ru.yandex.clickhouse.domain.ClickHouseDataType;
 import ru.yandex.clickhouse.util.guava.StreamUtils;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Types;
 import java.text.SimpleDateFormat;
@@ -51,6 +53,15 @@ public class ByteFragmentUtilsTest {
                 {new long[]{1L, 23L, -123L}},
                 {new long[]{-12345678987654321L, 23325235235L, -12321342L}},
                 {new long[]{}}
+        };
+    }
+
+    @DataProvider(name = "decimalArray")
+    public Object[][] decimalArray() {
+        return new Object[][]{
+                {new BigDecimal[]{BigDecimal.ONE, BigDecimal.valueOf(23L), BigDecimal.valueOf(-123L)}},
+                {new BigDecimal[]{BigDecimal.valueOf(-12345678987654321L), BigDecimal.valueOf(23325235235L), BigDecimal.valueOf(-12321342L)}},
+                {new BigDecimal[]{}}
         };
     }
 
@@ -244,6 +255,26 @@ public class ByteFragmentUtilsTest {
         }
     }
 
+    @Test(dataProvider = "decimalArray")
+    public void testParseArray(BigDecimal[] array) throws Exception {
+        String sourceString = "[" + Joiner.on(",").join(Iterables.transform(Arrays.asList(array), new Function<BigDecimal, String>() {
+
+            @Override
+            public String apply(BigDecimal s) {
+                return s.toPlainString();
+            }
+        })) + "]";
+
+        byte[] bytes = sourceString.getBytes(StreamUtils.UTF_8);
+        ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
+        BigDecimal[] parsedArray = (BigDecimal[]) ByteFragmentUtils.parseArray(fragment, BigDecimal.class);
+
+        assertEquals(parsedArray.length, array.length);
+        for (int i = 0; i < parsedArray.length; i++) {
+            assertEquals(parsedArray[i], array[i]);
+        }
+    }
+
     private static String joinStrings(String[] array) {
         return "[" + Joiner.on(",").join(Iterables.transform(Arrays.asList(array), new Function<String, String>() {
             @Override
@@ -257,9 +288,9 @@ public class ByteFragmentUtilsTest {
     public Object[][] doubleWithNanArrayOfArrays() {
         return new Object[][][] {
                 {new String[][]{{"nan", "12.13"}, {"nan", "nan"}},
-                new double[][]{{Double.NaN, 12.13d},{Double.NaN, Double.NaN}}},
+                        new double[][]{{Double.NaN, 12.13d},{Double.NaN, Double.NaN}}},
                 {new String[][]{{}},
-                new double[][]{{}}}
+                        new double[][]{{}}}
         };
     }
 
@@ -274,7 +305,7 @@ public class ByteFragmentUtilsTest {
         ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
 
         ClickHouseArray[] chArray = (ClickHouseArray[])
-                ByteFragmentUtils.parseArrayOfArrays(fragment, Double.class, false, Types.DOUBLE, false, null);
+                ByteFragmentUtils.parseArrayOfArrays(fragment, false, ClickHouseDataType.Float64, null);
 
         for (int i = 0; i < expected.length; i++) {
             double[] doubles = (double[]) chArray[i].getArray();
@@ -304,7 +335,7 @@ public class ByteFragmentUtilsTest {
         ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
 
         ClickHouseArray[] chArray = (ClickHouseArray[])
-                ByteFragmentUtils.parseArrayOfArrays(fragment, Float.class, false, Types.FLOAT, false, null);
+                ByteFragmentUtils.parseArrayOfArrays(fragment, false, ClickHouseDataType.Float32, null);
 
         for (int i = 0; i < expected.length; i++) {
             float[] floats = (float[]) chArray[i].getArray();
@@ -344,7 +375,7 @@ public class ByteFragmentUtilsTest {
         ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
 
         ClickHouseArray[] chArray = (ClickHouseArray[])
-                ByteFragmentUtils.parseArrayOfArrays(fragment, String.class, false, Types.VARCHAR, false, null);
+                ByteFragmentUtils.parseArrayOfArrays(fragment,  false, ClickHouseDataType.String, null);
 
         for(int i = 0; i < chArray.length; i++) {
             String[] strings = (String[]) chArray[i].getArray();
@@ -378,7 +409,7 @@ public class ByteFragmentUtilsTest {
         ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
 
         ClickHouseArray[] chArray = (ClickHouseArray[])
-                ByteFragmentUtils.parseArrayOfArrays(fragment, Integer.class, true, Types.INTEGER, false, null);
+                ByteFragmentUtils.parseArrayOfArrays(fragment, true, ClickHouseDataType.Int32, null);
 
         for (int i = 0; i < chArray.length; i++) {
             Integer[] integers = (Integer[]) chArray[i].getArray();
@@ -416,7 +447,7 @@ public class ByteFragmentUtilsTest {
         ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
 
         ClickHouseArray[] chArray = (ClickHouseArray[])
-                ByteFragmentUtils.parseArrayOfArrays(fragment, Long.class, false, Types.BIGINT, false, null);
+                ByteFragmentUtils.parseArrayOfArrays(fragment, false, ClickHouseDataType.Int64, null);
 
         for (int i = 0; i < arrayOfArrays.length; i++) {
             long[] longs = (long[]) chArray[i].getArray();
@@ -451,7 +482,7 @@ public class ByteFragmentUtilsTest {
         ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
 
         ClickHouseArray[] chArray = (ClickHouseArray[])
-                ByteFragmentUtils.parseArrayOfArrays(fragment, Float.class, false, Types.FLOAT, false, null);
+                ByteFragmentUtils.parseArrayOfArrays(fragment, false, ClickHouseDataType.Float32, null);
         for (int i = 0; i < chArray.length; i++) {
             float[] floats = (float[]) chArray[i].getArray();
             assertEquals(floats, source[i]);
@@ -485,7 +516,7 @@ public class ByteFragmentUtilsTest {
         ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
 
         ClickHouseArray[] chArray = (ClickHouseArray[])
-                ByteFragmentUtils.parseArrayOfArrays(fragment, Double.class, false, Types.DOUBLE, false, null);
+                ByteFragmentUtils.parseArrayOfArrays(fragment, false, ClickHouseDataType.Float64, null);
         for (int i = 0; i < chArray.length; i++) {
             double[] doubles = (double[]) chArray[i].getArray();
             assertEquals(doubles, source[i]);
@@ -510,8 +541,8 @@ public class ByteFragmentUtilsTest {
             arrays[i] = "[" + Joiner.on(",").join(Iterables.transform(Arrays.asList(source[i]), new Function<Date, String>() {
                 @Override
                 public String apply(Date s) {
-                   return dateFormat.format(s);
-             }
+                    return dateFormat.format(s);
+                }
             })) + "]";
         }
         String sourceString = joinStrings(arrays);
@@ -519,7 +550,7 @@ public class ByteFragmentUtilsTest {
         ByteFragment fragment = new ByteFragment(bytes, 0, bytes.length);
 
         ClickHouseArray[] chArray = (ClickHouseArray[])
-                ByteFragmentUtils.parseArrayOfArrays(fragment, Date.class, false, Types.DATE, false, dateFormat);
+                ByteFragmentUtils.parseArrayOfArrays(fragment, false, ClickHouseDataType.Date, dateFormat);
 
         for (int i = 0; i < chArray.length; i++) {
             Date[] dates = (Date[]) chArray[i].getArray();

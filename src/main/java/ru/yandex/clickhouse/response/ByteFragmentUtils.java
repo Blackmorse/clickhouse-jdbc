@@ -3,7 +3,9 @@ package ru.yandex.clickhouse.response;
 
 import com.google.common.primitives.Primitives;
 import ru.yandex.clickhouse.ClickHouseArray;
+import ru.yandex.clickhouse.domain.ClickHouseDataType;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -222,6 +224,14 @@ final class ByteFragmentUtils {
                         bigIntegerValue = new BigInteger(fragment.asString(true));
                     }
                     java.lang.reflect.Array.set(array, index++, bigIntegerValue);
+                } else if (elementClass == BigDecimal.class) {
+                    BigDecimal bigDecimalValue;
+                    if (fragment.isNull()) {
+                        bigDecimalValue = null;
+                    } else {
+                        bigDecimalValue = new BigDecimal(fragment.asString(true));
+                    }
+                    java.lang.reflect.Array.set(array, index++, bigDecimalValue);
                 } else if (elementClass == Float.class) {
                     Float floatValue;
                     if (fragment.isNull()) {
@@ -300,8 +310,8 @@ final class ByteFragmentUtils {
         return length;
     }
 
-    static Object parseArrayOfArrays(ByteFragment value, Class elementClass, boolean useObjects,
-                                     int elementType, boolean isUnsigned, SimpleDateFormat dateFormat) {
+    static Object parseArrayOfArrays(ByteFragment value, boolean useObjects,
+                                     ClickHouseDataType baseType, SimpleDateFormat dateFormat) {
         value = value.subseq(1, value.length() - 2);
         List<ByteFragment> byteFragments = nestedByteFragments(value);
 
@@ -310,8 +320,8 @@ final class ByteFragmentUtils {
         int index = 0;
 
         for (ByteFragment byteFragment : byteFragments) {
-            Object parsedArray = parseArray(byteFragment, elementClass, useObjects, dateFormat);
-            ClickHouseArray clickHouseArray = new ClickHouseArray(elementType, isUnsigned, parsedArray);
+            Object parsedArray = parseArray(byteFragment, baseType.getJavaClass(), useObjects, dateFormat);
+            ClickHouseArray clickHouseArray = new ClickHouseArray(baseType, parsedArray);
             java.lang.reflect.Array.set(array, index, clickHouseArray);
             index++;
         }
