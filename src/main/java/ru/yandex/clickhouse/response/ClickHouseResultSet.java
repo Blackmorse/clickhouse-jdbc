@@ -30,6 +30,7 @@ import ru.yandex.clickhouse.except.ClickHouseExceptionSpecifier;
 import ru.yandex.clickhouse.settings.ClickHouseProperties;
 
 import static ru.yandex.clickhouse.response.ByteFragmentUtils.parseArray;
+import static ru.yandex.clickhouse.response.ByteFragmentUtils.parseArrayOfArrays;
 
 
 public class ClickHouseResultSet extends AbstractResultSet {
@@ -301,34 +302,34 @@ public class ClickHouseResultSet extends AbstractResultSet {
         }
 
         final Object array;
+        SimpleDateFormat format = null;
         switch (colInfo.getArrayBaseType()) {
             case Date :
-                array = parseArray(
-                    getValue(columnIndex),
-                    colInfo.getArrayBaseType().getJavaClass(),
-                    properties.isUseObjectsInArrays(),
-                    dateFormat
-                );
-                break;
+                format = dateFormat;
+            break;
             case DateTime :
                 TimeZone timeZone = colInfo.getTimeZone() != null
-                    ? colInfo.getTimeZone()
-                    : dateTimeTimeZone;
+                        ? colInfo.getTimeZone()
+                        : dateTimeTimeZone;
                 dateTimeFormat.setTimeZone(timeZone);
-                array = parseArray(
+                format = dateTimeFormat;
+            break;
+        }
+
+        if (colInfo.getArrayLevel() > 1) {
+            array = parseArrayOfArrays(
+                    getValue(columnIndex),
+                    properties.isUseObjectsInArrays(),
+                    colInfo.getArrayBaseType(),
+                    format
+            );
+        } else {
+            array = parseArray(
                     getValue(columnIndex),
                     colInfo.getArrayBaseType().getJavaClass(),
                     properties.isUseObjectsInArrays(),
-                    dateTimeFormat
-                );
-                break;
-            default :
-                array = parseArray(
-                    getValue(columnIndex),
-                    colInfo.getArrayBaseType().getJavaClass(),
-                    properties.isUseObjectsInArrays()
-                );
-                break;
+                    format
+            );
         }
 
         return new ClickHouseArray(colInfo.getArrayBaseType(), array);
